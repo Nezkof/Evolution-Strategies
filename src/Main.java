@@ -10,18 +10,18 @@ public class Main {
         double[][] tableVariables = {{0, 0}, {1, 1}, {-2.903534, -2.903534}};
 
         final int testsNumber = 3;
-        final int parentsNumber = 200;
-        final int childsPerParentNumber = 4;
+        final int lambda = 200;
+        final int mu = 4;
         final double mutationRate = 0.001;
         final double sigma = 0.6;
-        final int epochsNumber = 100;
+        final int epochs = 100;
 
         System.out.println("=======================================================");
         System.out.println("\t\t\t\t\tINITIAL SETTINGS");
         System.out.println("-------------------------------------------------------");
-        System.out.println(" -> Population size: " + parentsNumber);
-        System.out.println(" -> Childs per parent: " + childsPerParentNumber);
-        System.out.println(" -> Epochs number: " + epochsNumber);
+        System.out.println(" -> Population size: " + lambda);
+        System.out.println(" -> Childs per parent: " + mu);
+        System.out.println(" -> Epochs number: " + epochs);
         System.out.println(" -> Mutation rate: " + mutationRate);
         System.out.println(" -> Sigma: " + sigma);
         for (int i = 0; i < functions.length; ++i) {
@@ -42,7 +42,7 @@ public class Main {
             System.out.println("-------------------------------------------------------");
             System.out.printf("%3s%17s%18s%17s\n", "№", "Duration", "Result", "Error");
 
-            EvolutionAlgorithm algorithm = new EvolutionAlgorithm(parentsNumber, childsPerParentNumber, epochsNumber, mutationRate, sigma, functions[i], functionsBounds[i]);
+            EvolutionaryAlgorithm algorithm = new EvolutionaryAlgorithm(lambda, mu, epochs, mutationRate, sigma, functions[i], functionsBounds[i]);
             double avgError = 0;
             double avgDuration = 0;
             for (int j = 1; j <= testsNumber; ++j) {

@@ -1,11 +1,9 @@
 import java.util.*;
-import java.util.ArrayList;
-import java.util.List;
 
-public class EvolutionAlgorithm {
-    private final int parentsNumber;
-    private final int childsPerParentNumber;
-    private final int epochsNumber;
+public class EvolutionaryAlgorithm {
+    private final int lambda;
+    private final int mu;
+    private final int epochsNum;
     List<double[]> population;
     List<Double> populationScores;
     private final FitnessFunction fitnessFunction;
@@ -15,82 +13,103 @@ public class EvolutionAlgorithm {
     private final Random random;
     private double bestPopulationScore;
 
-    public EvolutionAlgorithm(int parentsNumber, int childsPerParentNumber, int epochsNumber, double mutationRate, double sigma,
-                              FitnessFunction fitnessFunction, double[] bounds) {
+    public EvolutionaryAlgorithm(int lambda, int mu, int epochsNum, double mutationRate, double sigma, FitnessFunction fitnessFunction, double[] bounds) {
         this.random = new Random();
-        this.parentsNumber = parentsNumber;
-        this.childsPerParentNumber = childsPerParentNumber;
-        this.epochsNumber = epochsNumber;
+        this.lambda = lambda;
+        this.mu = mu;
+        this.epochsNum = epochsNum;
         this.fitnessFunction = fitnessFunction;
         this.mutationRate = mutationRate;
         this.sigma = sigma;
         population = new ArrayList<>();
         populationScores = new ArrayList<>();
-        createStartPopulation(bounds);
+        createPopulation(bounds);
     }
 
     public void startEvolution() {
         long startTime = System.currentTimeMillis();
-        for (int epoch = 0; epoch < epochsNumber; ++epoch) {
-            calculatePopulationScores();
+        for (int epoch = 0; epoch < epochsNum; ++epoch) {
+            calculateScores();
             addChilds();
-            calculatePopulationScores();
-            formNewPopulation();
-            mutateAllIndivids();
+            calculateScores();
+            selectNextParents();
+            mutate();
         }
 
         evolutionDuration = System.currentTimeMillis() - startTime;
     }
 
-    private void createStartPopulation(double[] bounds) {
-        double mean = (bounds[0] + bounds[1]) / 2.0;
-        double stdDev = (bounds[1] - bounds[0]) / 6;
-        for (int i = 0; i < parentsNumber; ++i) {
-            this.population.add(new double[]{random.nextGaussian()* stdDev + mean, random.nextGaussian()* stdDev + mean});
-        }
+    private void createPopulation(double[] bounds) {
+        for (int i = 0; i < lambda; ++i) 
+            this.population.add(new double[]{random.nextGaussian()* (bounds[1] - bounds[0]) / 6 + (bounds[0] + bounds[1]) / 2.0, random.nextGaussian() * (bounds[1] - bounds[0]) / 6 + (bounds[0] + bounds[1]) / 2.0});
     }
 
     private void addChilds() {
+        strategyLambdaPhoMu();
+        //strategyLambdaPlusMu();
+        //strategyLambdaMu();
+    }
+
+    private void strategyLambdaPlusMu() {
         List<double[]> childs = new ArrayList<>();
 
-        //(lambda, mu)//
-/*        for (int i = 0; i < parentsNumber; ++i) {
+        for (int i = 0; i < lambda; ++i) {
             double[] parent = population.get(random.nextInt(population.size()));
-            for (int j = 0; j < childsPerParentNumber; ++j) {
+            for (int j = 0; j < mu; ++j) {
                 double[] child = Arrays.copyOf(parent, parent.length);
                 child[0] += scaleToRange(random.nextGaussian(), -sigma, sigma);
                 child[1] += scaleToRange(random.nextGaussian(), -sigma, sigma);
                 childs.add(child);
             }
-        }*/
+        }
 
-        //(lambda/ro, mu)//
-        for (int i = 0; i < parentsNumber/2; ++i){
-            for (int j = 0; j < childsPerParentNumber; ++j){
+        population.addAll(childs);
+    }
+
+    private void strategyLambdaPhoMu () {
+        List<double[]> childs = new ArrayList<>();
+
+        for (int i = 0; i < lambda/2; ++i){
+            for (int j = 0; j < mu; ++j){
                 double[] parent1 = tournamentSelection();
                 double[] parent2 = tournamentSelection();
                 childs.add(new double[]{ (parent1[0] + parent2[0])/2, (parent1[1] + parent2[1])/2 });
             }
         }
 
-        //(lambda, mu)//
-        //population.clear();
         population.addAll(childs);
     }
 
-    private void formNewPopulation() {
-        List<double[]> newPopulation = new ArrayList<>(population);
+    private void strategyLambdaMu () {
+        List<double[]> childs = new ArrayList<>();
 
-        newPopulation.sort((o1, o2) -> Double.compare(fitnessFunction.calculate(o1[0], o1[1]), fitnessFunction.calculate(o2[0], o2[1])));
-
-        List<double[]> selectedPopulation = newPopulation.subList(0, parentsNumber);
-        bestPopulationScore = fitnessFunction.calculate(selectedPopulation.get(0)[0], selectedPopulation.get(0)[1]);
+        for (int i = 0; i < lambda; ++i) {
+            double[] parent = population.get(random.nextInt(population.size()));
+            for (int j = 0; j < mu; ++j) {
+                double[] child = Arrays.copyOf(parent, parent.length);
+                child[0] += scaleToRange(random.nextGaussian(), -sigma, sigma);
+                child[1] += scaleToRange(random.nextGaussian(), -sigma, sigma);
+                childs.add(child);
+            }
+        }
 
         population.clear();
-        population.addAll(selectedPopulation);
+        population.addAll(childs);
     }
 
-    private void mutateAllIndivids() {
+    private void selectNextParents() {
+        List<double[]> nextPopulation = new ArrayList<>(population);
+
+        nextPopulation.sort(Comparator.comparingDouble(individual -> fitnessFunction.calculate(individual[0], individual[1])));
+
+        nextPopulation = nextPopulation.subList(0, lambda);
+        bestPopulationScore = fitnessFunction.calculate(nextPopulation.get(0)[0], nextPopulation.get(0)[1]);
+
+        population.clear();
+        population.addAll(nextPopulation);
+    }
+
+    private void mutate() {
         for (double[] doubles : population)
             if (random.nextDouble() < mutationRate) {
                 doubles[0] += scaleToRange(random.nextGaussian(), -sigma, sigma);
@@ -98,9 +117,11 @@ public class EvolutionAlgorithm {
             }
     }
 
-    private double scaleToRange(double value, double min, double max) { return ((value + 1.0) / 2.0) * (max - min) + min; }
+    private double scaleToRange(double value, double min, double max) {
+        return ((value + 1.0) / 2.0) * (max - min) + min;
+    }
 
-    private void calculatePopulationScores() {
+    private void calculateScores() {
         if (!populationScores.isEmpty())
             populationScores.clear();
 
